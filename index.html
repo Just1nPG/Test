@@ -426,18 +426,27 @@
       scene.add(shore);
     }
 
-    const trunkGeometry = new THREE.CylinderGeometry(0.38, 0.58, 4.3, 6);
-    const leafGeometry = new THREE.ConeGeometry(2.35, 6, 7);
-    const leafGeometrySmall = new THREE.ConeGeometry(1.72, 4.4, 7);
-    const pineLeafGeometry = new THREE.ConeGeometry(2.15, 5.3, 7);
-    const foliageMaterials = [
-      new THREE.MeshStandardMaterial({ color: "#477650", roughness: 0.94 }),
-      new THREE.MeshStandardMaterial({ color: "#578457", roughness: 0.94 }),
-      new THREE.MeshStandardMaterial({ color: "#6b925d", roughness: 0.94 }),
-      new THREE.MeshStandardMaterial({ color: "#416b4d", roughness: 0.94 })
-    ];
-    const barkMaterial = new THREE.MeshStandardMaterial({ color: "#604b3d", roughness: 1 });
+    let trunkGeometry;
+    let leafGeometry;
+    let leafGeometrySmall;
+    let pineLeafGeometry;
+    let foliageMaterials;
+    let barkMaterial;
     const trees = [];
+
+    function initializeTreeAssets() {
+      trunkGeometry = new THREE.CylinderGeometry(0.38, 0.58, 4.3, 6);
+      leafGeometry = new THREE.ConeGeometry(2.35, 6, 7);
+      leafGeometrySmall = new THREE.ConeGeometry(1.72, 4.4, 7);
+      pineLeafGeometry = new THREE.ConeGeometry(2.15, 5.3, 7);
+      foliageMaterials = [
+        new THREE.MeshStandardMaterial({ color: "#477650", roughness: 0.94 }),
+        new THREE.MeshStandardMaterial({ color: "#578457", roughness: 0.94 }),
+        new THREE.MeshStandardMaterial({ color: "#6b925d", roughness: 0.94 }),
+        new THREE.MeshStandardMaterial({ color: "#416b4d", roughness: 0.94 })
+      ];
+      barkMaterial = new THREE.MeshStandardMaterial({ color: "#604b3d", roughness: 1 });
+    }
 
     function createTree(x, z, random, kind = "oak") {
       const factor = landFactor(x, z);
@@ -1249,6 +1258,7 @@
         forward = new THREE.Vector3();
         right = new THREE.Vector3();
         move = new THREE.Vector3();
+        initializeTreeAssets();
         renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
         renderer.setSize(window.innerWidth, window.innerHeight);
