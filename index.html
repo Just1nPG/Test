@@ -1,0 +1,1266 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#a8d7e8">
+  <title>Weitland – Ein Spaziergang durch eine lebendige Welt</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { background: #a8d7e8; color: #fff; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .hud { position: fixed; z-index: 3; inset: 0; pointer-events: none; }
+    .brand {
+      position: absolute; top: 24px; left: 26px; display: flex; align-items: center; gap: 12px;
+      padding: 11px 15px 11px 11px; border: 1px solid rgba(255,255,255,.3); border-radius: 15px;
+      background: rgba(15,35,38,.44); box-shadow: 0 8px 30px rgba(13,40,44,.12); backdrop-filter: blur(12px);
+    }
+    .brand-icon { display: grid; width: 35px; height: 35px; place-items: center; border-radius: 11px; background: rgba(224,248,206,.2); font-size: 19px; }
+    .brand-name { font-size: 13px; font-weight: 850; letter-spacing: .12em; }
+    .brand-subtitle { margin-top: 3px; color: rgba(255,255,255,.75); font-size: 10px; }
+
+    .location {
+      position: absolute; top: 26px; left: 50%; min-width: 180px; padding: 10px 18px; border: 1px solid rgba(255,255,255,.28);
+      border-radius: 999px; background: rgba(15,35,38,.34); text-align: center; transform: translateX(-50%); backdrop-filter: blur(10px);
+    }
+    .location-name { font-size: 12px; font-weight: 800; letter-spacing: .04em; }
+    .location-region { margin-top: 3px; color: rgba(255,255,255,.74); font-size: 10px; }
+
+    .help {
+      position: absolute; top: 24px; right: 24px; width: min(250px, calc(100vw - 32px)); padding: 15px 16px;
+      border: 1px solid rgba(255,255,255,.27); border-radius: 15px; background: rgba(15,35,38,.43);
+      box-shadow: 0 8px 30px rgba(13,40,44,.12); backdrop-filter: blur(12px); pointer-events: auto;
+    }
+    .help-title { margin-bottom: 10px; font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .key-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; color: rgba(255,255,255,.83); font-size: 10px; }
+    kbd { display: inline-grid; min-width: 23px; height: 22px; place-items: center; padding: 0 5px; border: 1px solid rgba(255,255,255,.3); border-radius: 6px; background: rgba(255,255,255,.12); color: #fff; font: inherit; font-size: 9px; font-weight: 750; }
+    .key-group { display: flex; gap: 3px; }
+    .help-note { margin-top: 11px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,.16); color: rgba(255,255,255,.68); font-size: 9px; line-height: 1.5; }
+
+    .crosshair { position: absolute; top: 50%; left: 50%; width: 5px; height: 5px; border: 1px solid rgba(255,255,255,.9); border-radius: 50%; box-shadow: 0 1px 5px rgba(0,0,0,.4); transform: translate(-50%, -50%); }
+    .bottom-bar { position: absolute; right: 24px; bottom: 23px; left: 24px; display: flex; align-items: end; justify-content: space-between; gap: 12px; }
+    .status-card { padding: 10px 13px; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; background: rgba(15,35,38,.4); color: rgba(255,255,255,.85); font-size: 10px; backdrop-filter: blur(10px); }
+    .status-card strong { color: #fff; font-weight: 800; }
+    .look-button {
+      display: none; min-height: 42px; align-items: center; justify-content: center; padding: 0 16px;
+      border: 1px solid rgba(255,255,255,.43); border-radius: 12px; background: rgba(15,35,38,.64);
+      color: white; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; pointer-events: auto;
+      backdrop-filter: blur(10px);
+    }
+    .look-button:hover { background: rgba(15,35,38,.83); }
+    .ferry-button { display: none; min-height: 42px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid rgba(255,255,255,.43); border-radius: 12px; background: rgba(38,74,75,.78); color: white; font: inherit; font-size: 11px; font-weight: 850; cursor: pointer; pointer-events: auto; backdrop-filter: blur(10px); }
+    .ferry-button.show { display: inline-flex; }
+    .dpad { display: none; }
+
+    .start-screen, .loading-screen, .error-screen {
+      position: fixed; z-index: 5; inset: 0; display: grid; place-items: center;
+      background: linear-gradient(180deg, rgba(13,30,35,.26), rgba(11,26,34,.54));
+      transition: opacity .55s ease, visibility .55s ease;
+    }
+    .start-screen.hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+    .loading-screen.hidden, .error-screen.hidden { display: none; }
+    .intro-card {
+      width: min(460px, calc(100% - 34px)); padding: 31px; border: 1px solid rgba(255,255,255,.35); border-radius: 24px;
+      background: rgba(18,37,42,.73); text-align: center; box-shadow: 0 28px 80px rgba(10,30,34,.28); backdrop-filter: blur(18px);
+    }
+    .intro-symbol { display: grid; width: 61px; height: 61px; margin: 0 auto 15px; place-items: center; border: 1px solid rgba(224,248,206,.35); border-radius: 19px; background: rgba(224,248,206,.14); font-size: 29px; }
+    .intro-eyebrow { color: #d3efbf; font-size: 9px; font-weight: 850; letter-spacing: .2em; text-transform: uppercase; }
+    .intro-title { margin: 9px 0 10px; color: #fff; font-size: clamp(29px, 8vw, 40px); font-weight: 850; letter-spacing: -.055em; }
+    .intro-copy { max-width: 340px; margin: 0 auto; color: rgba(255,255,255,.78); font-size: 12px; line-height: 1.7; }
+    .start-button { min-height: 46px; margin-top: 21px; padding: 0 23px; border: 0; border-radius: 13px; background: #d9efbd; color: #203529; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; transition: transform .15s, background .15s; }
+    .start-button:hover { transform: translateY(-2px); background: #e8facf; }
+    .intro-foot { margin-top: 13px; color: rgba(255,255,255,.53); font-size: 9px; }
+    .loading-message, .error-message { width: min(460px, calc(100% - 34px)); padding: 24px; border: 1px solid rgba(255,255,255,.3); border-radius: 18px; background: rgba(18,37,42,.75); color: #fff; text-align: center; font-size: 13px; line-height: 1.6; backdrop-filter: blur(14px); }
+    .error-message strong { display: block; margin-bottom: 7px; color: #ffd2be; }
+
+    .toast { position: fixed; z-index: 8; bottom: 82px; left: 50%; max-width: calc(100% - 32px); padding: 10px 15px; border: 1px solid rgba(255,255,255,.26); border-radius: 999px; background: rgba(15,35,38,.7); color: #fff; font-size: 10px; text-align: center; opacity: 0; transform: translate(-50%, 8px); transition: opacity .2s, transform .2s; pointer-events: none; backdrop-filter: blur(10px); }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 680px) {
+      .brand { top: 12px; left: 12px; padding: 8px; }
+      .brand-icon { width: 30px; height: 30px; }
+      .brand-name { font-size: 11px; }
+      .brand-subtitle { font-size: 9px; }
+      .location { top: 13px; left: auto; right: 12px; min-width: 0; padding: 8px 11px; transform: none; }
+      .location-name { font-size: 10px; }
+      .location-region { font-size: 8px; }
+      .help { top: auto; right: 12px; bottom: 67px; width: auto; max-width: min(240px, calc(100vw - 24px)); padding: 11px 13px; }
+      .help-title { margin-bottom: 7px; font-size: 9px; }
+      .key-row { margin: 5px 0; font-size: 9px; }
+      .help-note { display: none; }
+      .bottom-bar { right: 12px; bottom: 12px; left: 12px; align-items: center; }
+      .status-card { max-width: 56%; padding: 8px 10px; font-size: 9px; }
+      .look-button { display: inline-flex; min-height: 38px; font-size: 10px; }
+      .ferry-button { min-height: 38px; padding: 0 9px; font-size: 9px; }
+      .crosshair { display: none; }
+      .dpad { position: absolute; bottom: 12px; left: 12px; display: grid; width: 126px; height: 126px; grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 4px; pointer-events: auto; }
+      .dpad button { display: grid; place-items: center; padding: 0; border: 1px solid rgba(255,255,255,.32); border-radius: 12px; background: rgba(15,35,38,.55); color: #fff; font: inherit; font-size: 17px; font-weight: 850; touch-action: none; backdrop-filter: blur(8px); }
+      .dpad button:active { background: rgba(217,239,189,.4); }
+      .dpad [data-key="w"] { grid-area: 1 / 2; }
+      .dpad [data-key="a"] { grid-area: 2 / 1; }
+      .dpad [data-key="s"] { grid-area: 2 / 2; }
+      .dpad [data-key="d"] { grid-area: 2 / 3; }
+      .dpad-center { display: grid; place-items: center; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; color: rgba(255,255,255,.45); font-size: 11px; }
+      .dpad-center.top { grid-area: 1 / 1; }
+      .dpad-center.right { grid-area: 1 / 3; }
+      .dpad-center.left { grid-area: 3 / 1; }
+      .dpad-center.bottom { grid-area: 3 / 2; }
+      .dpad-center.bottom-right { grid-area: 3 / 3; }
+      .bottom-bar { right: 12px; left: auto; width: auto; gap: 7px; }
+      .status-card { display: none; }
+      .intro-card { padding: 25px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-message">Die Welt wird erschaffen …</div>
+  </div>
+  <div class="error-screen hidden" id="errorScreen">
+    <div class="error-message"><strong>Die 3D-Welt konnte nicht geladen werden.</strong><span id="errorText">Prüfe deine Internetverbindung und lade die Seite erneut.</span></div>
+  </div>
+
+  <div class="hud">
+    <div class="brand">
+      <div class="brand-icon" aria-hidden="true">🌿</div>
+      <div><div class="brand-name">WEITLAND</div><div class="brand-subtitle">Ein Spaziergang durch die Welt</div></div>
+    </div>
+    <div class="location">
+      <div class="location-name" id="locationName">Grüne Weite</div>
+      <div class="location-region" id="locationRegion">Eine lebendige Welt</div>
+    </div>
+    <section class="help" aria-label="Steuerung">
+      <div class="help-title">Auf Entdeckungstour</div>
+      <div class="key-row"><span class="key-group"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Gehen</span></div>
+      <div class="key-row"><span class="key-group"><kbd>↑</kbd><kbd>←</kbd><kbd>↓</kbd><kbd>→</kbd></span><span>Auch bewegen</span></div>
+      <div class="key-row"><kbd>Maus</kbd><span>Umschauen</span></div>
+      <div class="key-row"><kbd>Shift</kbd><span>Leicht joggen</span></div>
+      <div class="key-row"><kbd>E</kbd><span>Fähre nehmen</span></div>
+      <div class="help-note">Am Handy: links unten den Blick-Modus starten, dann wischen zum Umschauen und die Pfeiltasten zum Gehen nutzen.</div>
+    </section>
+    <div class="crosshair" aria-hidden="true"></div>
+    <div class="dpad" aria-label="Bewegungssteuerung">
+      <button type="button" data-key="w" aria-label="Vorwärts">↑</button>
+      <span class="dpad-center top" aria-hidden="true">·</span>
+      <span class="dpad-center right" aria-hidden="true">·</span>
+      <button type="button" data-key="a" aria-label="Nach links">←</button>
+      <button type="button" data-key="s" aria-label="Rückwärts">↓</button>
+      <button type="button" data-key="d" aria-label="Nach rechts">→</button>
+      <span class="dpad-center left" aria-hidden="true">·</span>
+      <span class="dpad-center bottom" aria-hidden="true">·</span>
+      <span class="dpad-center bottom-right" aria-hidden="true">·</span>
+    </div>
+    <div class="bottom-bar">
+      <div class="status-card"><strong id="statusTitle">Ein neuer Morgen</strong><span id="statusText"> · Die Welt wartet auf dich.</span></div>
+      <button class="ferry-button" id="ferryButton">⛴ Fähre nehmen</button>
+      <button class="look-button" id="lookButton">Umschauen aktivieren</button>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <section class="start-screen" id="startScreen">
+    <div class="intro-card">
+      <div class="intro-symbol" aria-hidden="true">🌄</div>
+      <div class="intro-eyebrow">Eine kleine Welt zum Entdecken</div>
+      <h1 class="intro-title">Weitland</h1>
+      <p class="intro-copy">Wandere durch Wälder und Wiesen, folge den Flüssen, entdecke kleine Dörfer und schau hinaus aufs offene Meer. Es gibt keinen Auftrag und keine Eile.</p>
+      <button class="start-button" id="startButton">Auf Entdeckungstour gehen</button>
+      <div class="intro-foot">Für das 3D-Erlebnis braucht dein Browser eine Internetverbindung.</div>
+    </div>
+  </section>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+      }
+    }
+  </script>
+  <script type="module">
+    const loadingScreen = document.getElementById("loadingScreen");
+    const errorScreen = document.getElementById("errorScreen");
+    const startScreen = document.getElementById("startScreen");
+    const lookButton = document.getElementById("lookButton");
+    const toast = document.getElementById("toast");
+    const locationName = document.getElementById("locationName");
+    const locationRegion = document.getElementById("locationRegion");
+    const statusTitle = document.getElementById("statusTitle");
+    const statusText = document.getElementById("statusText");
+    const startButton = document.getElementById("startButton");
+
+    const WORLD_SIZE = 1120;
+    const SEA_LEVEL = 1.4;
+    const PLAYER_HEIGHT = 2.15;
+    const PLAYER_RADIUS = 1.5;
+    const CONTINENTS = [
+      { x: 10, z: -9, radius: 261, scale: 1 },
+      { x: -370, z: -100, radius: 115, scale: 0.48 },
+      { x: 345, z: 300, radius: 137, scale: 0.56 },
+      { x: -310, z: 365, radius: 120, scale: 0.5 }
+    ];
+    const START_POSITION = { x: -56, z: 60 };
+    const keys = new Set();
+    const colliders = [];
+    const waterSurfaces = [];
+    const landmarks = [];
+    const settlements = [
+      { x: 65, z: -6, radius: 76 },
+      { x: -370, z: -100, radius: 91 },
+      { x: 345, z: 300, radius: 78 },
+      { x: -310, z: 365, radius: 59 }
+    ];
+    const ferryPorts = [];
+    let clock;
+    let cameraDirection;
+    let forward;
+    let right;
+    let move;
+    let THREE;
+    let renderer;
+    let scene;
+    let camera;
+    let yaw = Math.PI * 0.18;
+    let pitch = -0.035;
+    let toastTimer;
+    let lastLocation = "";
+    let mobileLook = false;
+    let isPointerLocked = false;
+    let walkingTime = 0;
+    let initialized = false;
+
+    function showError(message) {
+      document.getElementById("errorText").textContent = message;
+      startScreen.classList.add("hidden");
+      errorScreen.classList.remove("hidden");
+      loadingScreen.classList.add("hidden");
+    }
+
+    function seededRandom(seed) {
+      let value = seed >>> 0;
+      return () => {
+        value = (value * 1664525 + 1013904223) >>> 0;
+        return value / 4294967296;
+      };
+    }
+
+    function heightAt(x, z) {
+      const rolling = Math.sin(x * 0.023 + 1.2) * 4.1
+        + Math.cos(z * 0.018 - 0.5) * 3.4
+        + Math.sin((x + z) * 0.012) * 3.6
+        + Math.cos((x - z * 1.3) * 0.014) * 2.3
+        + Math.sin(x * 0.065 + z * 0.048) * 0.7;
+      const hills = Math.max(0, Math.sin(x * 0.009 + z * 0.012) + Math.cos(z * 0.014 - x * 0.005) - 0.43);
+      const mountainRange = 7 + 4 * Math.sin(z * 0.006 + x * 0.004);
+      const mountain = hills * hills * mountainRange;
+      return 4.2 + rolling + mountain;
+    }
+
+    function smoothstep(edge0, edge1, value) {
+      const t = THREE.MathUtils.clamp((value - edge0) / (edge1 - edge0), 0, 1);
+      return t * t * (3 - 2 * t);
+    }
+
+    function coastAt(x, z) {
+      let nearestCoast = Infinity;
+      for (const continent of CONTINENTS) {
+        const angle = Math.atan2(z - continent.z, x - continent.x);
+        const radius = continent.radius
+          + continent.scale * (
+            28 * Math.sin(angle * 3 + 0.7)
+            + 20 * Math.sin(angle * 5 - 1.1)
+            + 13 * Math.cos(angle * 8 + 0.9)
+            + 8 * Math.sin(angle * 13)
+          );
+        const distance = Math.hypot((x - continent.x) * 0.97, (z - continent.z) * 1.035);
+        nearestCoast = Math.min(nearestCoast, distance - radius);
+      }
+      return nearestCoast;
+    }
+
+    function landFactor(x, z) {
+      const shore = coastAt(x, z);
+      return smoothstep(-8, 8, -shore);
+    }
+
+    function terrainHeight(x, z) {
+      return SEA_LEVEL + (heightAt(x, z) - SEA_LEVEL) * landFactor(x, z);
+    }
+
+    function createTerrain() {
+      const segments = 230;
+      const geometry = new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE, segments, segments);
+      geometry.rotateX(-Math.PI / 2);
+      const positions = geometry.attributes.position;
+      const colors = [];
+      const base = new THREE.Color();
+      const mix = new THREE.Color();
+      const land = new THREE.Color("#83b975");
+      const deepGrass = new THREE.Color("#668e60");
+      const shoreColor = new THREE.Color("#d3c591");
+      const mountainColor = new THREE.Color("#819087");
+      const peakColor = new THREE.Color("#e5e6db");
+      const beachTint = new THREE.Color("#dfd5ad");
+
+      for (let i = 0; i < positions.count; i++) {
+        const x = positions.getX(i);
+        const z = positions.getZ(i);
+        const rawHeight = heightAt(x, z);
+        const shore = coastAt(x, z);
+        const landAmount = landFactor(x, z);
+        const elevation = terrainHeight(x, z);
+        positions.setY(i, elevation);
+
+        const grassVariation = (Math.sin(x * 0.13) * Math.cos(z * 0.105) + Math.sin((x + z) * 0.2)) * 0.035;
+        const mountain = smoothstep(13, 30, rawHeight);
+        const summit = smoothstep(26, 42, rawHeight);
+        base.copy(land).lerp(deepGrass, THREE.MathUtils.clamp(grassVariation + (1 - landAmount) * 0.12, 0, 0.5));
+        base.lerp(shoreColor, 1 - landAmount);
+        base.lerp(beachTint, smoothstep(-3, 9, shore) * landAmount * 0.75);
+        base.lerp(mountainColor, mountain * landAmount * 0.8);
+        base.lerp(peakColor, summit * landAmount * 0.75);
+        colors.push(base.r, base.g, base.b);
+      }
+      geometry.attributes.position.needsUpdate = true;
+      geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+      geometry.computeVertexNormals();
+      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, metalness: 0 });
+      const terrain = new THREE.Mesh(geometry, material);
+      terrain.receiveShadow = true;
+      terrain.name = "living landscape";
+      scene.add(terrain);
+    }
+
+    function makeWaterMaterial(color, opacity = 0.88) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        roughness: 0.23,
+        metalness: 0.04,
+        transparent: opacity < 1,
+        opacity,
+        side: THREE.DoubleSide,
+        depthWrite: opacity >= 1
+      });
+    }
+
+    function addWater(geometry, material, name) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      waterSurfaces.push(mesh);
+      return mesh;
+    }
+
+    function createOcean() {
+      const geometry = new THREE.PlaneGeometry(WORLD_SIZE * 3, WORLD_SIZE * 3, 1, 1);
+      geometry.rotateX(-Math.PI / 2);
+      const ocean = addWater(geometry, makeWaterMaterial("#367c94", 1), "open ocean");
+      ocean.position.set(0, SEA_LEVEL + 0.11, 0);
+    }
+
+    function createRiver() {
+      const points = [];
+      for (let i = 0; i <= 76; i++) {
+        const t = i / 76;
+        const z = -222 + t * 386;
+        const x = -76 + Math.sin(t * Math.PI * 2.1) * 37 + Math.sin(t * 9.3) * 8 + t * 19;
+        points.push(new THREE.Vector3(x, SEA_LEVEL + 0.08, z));
+      }
+      const curve = new THREE.CatmullRomCurve3(points);
+      const geometry = new THREE.TubeGeometry(curve, 270, 2.9, 8, false);
+      const river = addWater(geometry, makeWaterMaterial("#479db1", 0.95), "Willow river");
+      river.material.roughness = 0.19;
+      river.material.depthWrite = false;
+    }
+
+    function createLake(cx, cz, rx, rz, color = "#4a9fb1") {
+      const points = [];
+      const count = 64;
+      for (let i = 0; i <= count; i++) {
+        const angle = i / count * Math.PI * 2;
+        const wobble = 1 + 0.07 * Math.sin(angle * 4 + cx) + 0.035 * Math.cos(angle * 7 + cz);
+        points.push(new THREE.Vector2(Math.cos(angle) * rx * wobble, Math.sin(angle) * rz * wobble));
+      }
+      const shape = new THREE.Shape(points);
+      const geometry = new THREE.ShapeGeometry(shape, 20);
+      const mesh = addWater(geometry, makeWaterMaterial(color, 0.93), "quiet lake");
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(cx, terrainHeight(cx, cz) + 0.055, cz);
+      const land = new THREE.Shape();
+      for (let i = 0; i <= count; i++) {
+        const angle = i / count * Math.PI * 2;
+        const wobble = 1 + 0.07 * Math.sin(angle * 4 + cx) + 0.035 * Math.cos(angle * 7 + cz);
+        land.lineTo(Math.cos(angle) * (rx + 1.7) * wobble, Math.sin(angle) * (rz + 1.7) * wobble);
+      }
+      land.closePath();
+      const shoreGeometry = new THREE.ShapeGeometry(land, 20);
+      const shore = new THREE.Mesh(shoreGeometry, new THREE.MeshStandardMaterial({ color: "#d2c293", roughness: 1, side: THREE.DoubleSide }));
+      shore.rotation.x = -Math.PI / 2;
+      shore.position.set(cx, terrainHeight(cx, cz) + 0.025, cz);
+      scene.add(shore);
+    }
+
+    const trunkGeometry = new THREE.CylinderGeometry(0.38, 0.58, 4.3, 6);
+    const leafGeometry = new THREE.ConeGeometry(2.35, 6, 7);
+    const leafGeometrySmall = new THREE.ConeGeometry(1.72, 4.4, 7);
+    const pineLeafGeometry = new THREE.ConeGeometry(2.15, 5.3, 7);
+    const foliageMaterials = [
+      new THREE.MeshStandardMaterial({ color: "#477650", roughness: 0.94 }),
+      new THREE.MeshStandardMaterial({ color: "#578457", roughness: 0.94 }),
+      new THREE.MeshStandardMaterial({ color: "#6b925d", roughness: 0.94 }),
+      new THREE.MeshStandardMaterial({ color: "#416b4d", roughness: 0.94 })
+    ];
+    const barkMaterial = new THREE.MeshStandardMaterial({ color: "#604b3d", roughness: 1 });
+    const trees = [];
+
+    function createTree(x, z, random, kind = "oak") {
+      const factor = landFactor(x, z);
+      if (factor < 0.86 || coastAt(x, z) < 14 || heightAt(x, z) > 27) return;
+      const scale = 0.74 + random() * 0.63;
+      const y = terrainHeight(x, z);
+      const foliageIndex = Math.floor(random() * foliageMaterials.length);
+      trees.push({ x, z, y, scale, kind, foliageIndex, rotation: random() * Math.PI });
+      colliders.push({ x, z, radius: 0.8 * scale });
+    }
+
+    function createForest() {
+      const random = seededRandom(90317);
+      const riverX = (z) => -76 + Math.sin(((z + 222) / 386) * Math.PI * 2.1) * 37 + Math.sin(((z + 222) / 386) * 9.3) * 8 + ((z + 222) / 386) * 19;
+      let placed = 0;
+      for (let i = 0; i < 8000 && placed < 1250; i++) {
+        const x = (random() - 0.5) * 1020;
+        const z = (random() - 0.5) * 1020;
+        const nearRiver = Math.abs(x - riverX(z));
+        const inClearing = settlements.some((town) => {
+          const distance = Math.hypot(x - town.x, z - town.z);
+          return distance < town.radius * 0.54 || distance < town.radius && random() < 0.72;
+        });
+        const nearLake = Math.hypot(x - 148, z - 92) < 34 || Math.hypot(x + 170, z + 70) < 27;
+        if (nearRiver < 9 || inClearing || nearLake) continue;
+        createTree(x, z, random, random() < 0.29 ? "pine" : "oak");
+        placed++;
+      }
+      const trunkInstances = new THREE.InstancedMesh(trunkGeometry, barkMaterial, trees.length);
+      const batches = new Map();
+      const dummy = new THREE.Object3D();
+      trees.forEach((tree, index) => {
+        dummy.position.set(tree.x, tree.y + 2.1 * tree.scale, tree.z);
+        dummy.rotation.set(0, tree.rotation, 0);
+        dummy.scale.set(tree.scale * 0.72, tree.scale, tree.scale * 0.72);
+        dummy.updateMatrix();
+        trunkInstances.setMatrixAt(index, dummy.matrix);
+        const key = `${tree.kind}-${tree.foliageIndex}`;
+        if (!batches.has(key)) batches.set(key, { kind: tree.kind, materialIndex: tree.foliageIndex, trees: [] });
+        batches.get(key).trees.push(tree);
+      });
+      trunkInstances.instanceMatrix.needsUpdate = true;
+      trunkInstances.castShadow = true;
+      trunkInstances.receiveShadow = true;
+      scene.add(trunkInstances);
+
+      for (const batch of batches.values()) {
+        const material = foliageMaterials[batch.materialIndex];
+        const primaryGeometry = batch.kind === "pine" ? pineLeafGeometry : leafGeometry;
+        const primaryOffset = batch.kind === "pine" ? 5.3 : 5.3;
+        const primary = new THREE.InstancedMesh(primaryGeometry, material, batch.trees.length);
+        const crown = batch.kind === "oak" ? new THREE.InstancedMesh(leafGeometrySmall, material, batch.trees.length) : null;
+        batch.trees.forEach((tree, index) => {
+          dummy.position.set(tree.x, tree.y + primaryOffset * tree.scale, tree.z);
+          dummy.rotation.set(0, tree.rotation, 0);
+          dummy.scale.setScalar(tree.scale);
+          dummy.updateMatrix();
+          primary.setMatrixAt(index, dummy.matrix);
+          if (crown) {
+            dummy.position.set(tree.x, tree.y + 7.25 * tree.scale, tree.z);
+            dummy.updateMatrix();
+            crown.setMatrixAt(index, dummy.matrix);
+          }
+        });
+        primary.instanceMatrix.needsUpdate = true;
+        primary.castShadow = true;
+        primary.receiveShadow = true;
+        scene.add(primary);
+        if (crown) {
+          crown.instanceMatrix.needsUpdate = true;
+          crown.castShadow = true;
+          crown.receiveShadow = true;
+          scene.add(crown);
+        }
+      }
+
+      function createCity(cx, cz, name, region, seed, rows, columns, spacing) {
+        const random = seededRandom(seed);
+        const plazaY = terrainHeight(cx, cz);
+        const plaza = new THREE.Mesh(
+          new THREE.CircleGeometry(17, 40),
+          new THREE.MeshStandardMaterial({ color: "#cfc5a6", roughness: 1 })
+        );
+        plaza.rotation.x = -Math.PI / 2;
+        plaza.position.set(cx, plazaY + 0.1, cz);
+        scene.add(plaza);
+
+        const wallColors = ["#d9d4c3", "#d4dfd5", "#c5d3d4", "#e0d1b8", "#c1cbd9", "#d8c6ba"];
+        const roofColors = ["#666f70", "#7a6655", "#8d6250", "#647a75", "#8a8171"];
+        for (let row = 0; row < rows; row++) {
+          for (let column = 0; column < columns; column++) {
+            if (row === Math.floor(rows / 2) && column === Math.floor(columns / 2)) continue;
+            const x = cx + (column - (columns - 1) / 2) * spacing + (random() - 0.5) * 2.4;
+            const z = cz + (row - (rows - 1) / 2) * spacing + (random() - 0.5) * 2.4;
+            const width = spacing * (0.54 + random() * 0.16);
+            const depth = spacing * (0.53 + random() * 0.17);
+            const floors = 2 + Math.floor(random() * 4);
+            const height = 5 + floors * 3.2;
+            const flat = random() > 0.28;
+            const building = addBuilding(
+              x,
+              z,
+              width,
+              depth,
+              height,
+              wallColors[Math.floor(random() * wallColors.length)],
+              roofColors[Math.floor(random() * roofColors.length)],
+              random,
+              { rotation: random() * 0.12 - 0.06, flat, windows: false }
+            );
+            if (random() > 0.58) {
+              const tower = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.65, 0.9, 4 + random() * 4, 8),
+                new THREE.MeshStandardMaterial({ color: "#657974", roughness: 0.88 })
+              );
+              tower.position.set(x + width * 0.23, building.y + height + 2.4, z);
+              tower.castShadow = true;
+              scene.add(tower);
+            }
+          }
+        }
+
+        const hall = addBuilding(cx, cz, 17, 17, 20, "#e0d5bd", "#627d77", random, { flat: true, windows: false });
+        const clock = new THREE.Mesh(
+          new THREE.CylinderGeometry(3.2, 3.5, 2.2, 10),
+          new THREE.MeshStandardMaterial({ color: "#d8cba8", roughness: 0.86 })
+        );
+        clock.position.set(cx, hall.y + 22, cz);
+        clock.castShadow = true;
+        scene.add(clock);
+        const spire = new THREE.Mesh(
+          new THREE.ConeGeometry(2.4, 7, 8),
+          new THREE.MeshStandardMaterial({ color: "#697e77", roughness: 0.83 })
+        );
+        spire.position.set(cx, hall.y + 26.4, cz);
+        spire.castShadow = true;
+        scene.add(spire);
+        landmarks.push({
+          x: cx,
+          z: cz,
+          y: hall.y,
+          name,
+          region,
+          title: `Die Stadt ${name}`,
+          text: "Ein belebter Ort mit Häusern, Plätzen und hohen Dächern."
+        });
+      }
+
+      function createFerryPort(x, z, direction, name, region, arrivalX, arrivalZ) {
+        const pierLength = 17;
+        const angle = Math.atan2(direction.x, direction.z);
+        for (let i = 0; i < 5; i++) {
+          const offset = (i - 2) * 1.4;
+          const plank = new THREE.Mesh(
+            new THREE.BoxGeometry(1.35, 0.32, pierLength),
+            new THREE.MeshStandardMaterial({ color: i % 2 ? "#8f7353" : "#a38762", roughness: 0.94 })
+          );
+          plank.position.set(
+            x + Math.cos(angle) * offset,
+            SEA_LEVEL + 0.65,
+            z + Math.sin(angle) * offset
+          );
+          plank.rotation.y = angle;
+          plank.castShadow = true;
+          plank.receiveShadow = true;
+          scene.add(plank);
+        }
+        for (const side of [-1, 1]) {
+          const post = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.28, 0.32, 3.5, 7),
+            new THREE.MeshStandardMaterial({ color: "#765b42", roughness: 1 })
+          );
+          post.position.set(x + side * 3.6, SEA_LEVEL + 1.3, z);
+          post.castShadow = true;
+          scene.add(post);
+          const lantern = new THREE.Mesh(
+            new THREE.SphereGeometry(0.42, 8, 6),
+            new THREE.MeshStandardMaterial({ color: "#fff0b7", emissive: "#d9aa5a", emissiveIntensity: 0.5 })
+          );
+          lantern.position.set(x + side * 3.6, SEA_LEVEL + 3.15, z);
+          scene.add(lantern);
+        }
+        ferryPorts.push({ x, z, arrivalX, arrivalZ, name, region });
+        landmarks.push({ x, z, y: SEA_LEVEL, name, region, title: "Ein kleiner Fährhafen", text: "Drücke E, um mit der Fähre zu einer anderen Küste zu fahren.", distance: 19 });
+      }
+
+      function travelByFerry() {
+        let nearestIndex = -1;
+        let nearestDistance = Infinity;
+        ferryPorts.forEach((port, index) => {
+          const distance = Math.hypot(camera.position.x - port.x, camera.position.z - port.z);
+          if (distance < 15 && distance < nearestDistance) {
+            nearestIndex = index;
+            nearestDistance = distance;
+          }
+        });
+        if (nearestIndex < 0) {
+          notify("Geh näher an einen Fährsteg, um überzusetzen.");
+          return;
+        }
+        const destination = ferryPorts[(nearestIndex + 1) % ferryPorts.length];
+        camera.position.set(
+          destination.arrivalX,
+          terrainHeight(destination.arrivalX, destination.arrivalZ) + PLAYER_HEIGHT,
+          destination.arrivalZ
+        );
+        yaw = Math.atan2(destination.x - destination.arrivalX, destination.z - destination.arrivalZ);
+        notify(`Die Fähre bringt dich nach ${destination.name}.`);
+        updateLocation();
+      }
+    }
+
+    function addBuilding(cx, cz, width, depth, height, wallColor, roofColor, random, options = {}) {
+      const y = terrainHeight(cx, cz);
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(width, height, depth),
+        new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.9 })
+      );
+      body.position.set(cx, y + height / 2, cz);
+      body.rotation.y = options.rotation ?? (random() - 0.5) * 0.25;
+      body.castShadow = true;
+      body.receiveShadow = true;
+      scene.add(body);
+      const roofGeometry = options.flat
+        ? new THREE.BoxGeometry(width * 1.07, 0.55, depth * 1.07)
+        : new THREE.ConeGeometry(Math.max(width, depth) * 0.76, height * 0.47, 4);
+      const roof = new THREE.Mesh(roofGeometry, new THREE.MeshStandardMaterial({ color: roofColor, roughness: 0.82 }));
+      roof.position.set(cx, y + height + (options.flat ? 0.2 : height * 0.235), cz);
+      if (!options.flat) roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      roof.receiveShadow = true;
+      scene.add(roof);
+      const wall = Math.min(width, depth) * 0.16;
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(wall, Math.max(1.15, height * 0.42), 0.14),
+        new THREE.MeshStandardMaterial({ color: "#493c34", roughness: 1 })
+      );
+      door.position.set(cx, y + Math.max(1.15, height * 0.21), cz + depth / 2 + 0.08);
+      door.rotation.y = body.rotation.y;
+      scene.add(door);
+      if (options.windows !== false) {
+        const windowMaterial = new THREE.MeshStandardMaterial({ color: "#b9e3dd", emissive: "#47756e", emissiveIntensity: 0.18, roughness: 0.38 });
+        for (const sign of [-1, 1]) {
+          const windowMesh = new THREE.Mesh(new THREE.BoxGeometry(width * 0.17, height * 0.17, 0.12), windowMaterial);
+          windowMesh.position.set(cx + sign * width * 0.25, y + height * 0.57, cz + depth / 2 + 0.09);
+          windowMesh.rotation.y = body.rotation.y;
+          scene.add(windowMesh);
+        }
+      }
+      const bound = Math.max(width, depth) * 0.54;
+      colliders.push({ x: cx, z: cz, radius: bound });
+      return { x: cx, z: cz, y, height, body, roof };
+    }
+
+    function createVillage() {
+      const random = seededRandom(1881);
+      const cx = 65;
+      const cz = -6;
+      const plazaY = terrainHeight(cx, cz);
+      const plaza = new THREE.Mesh(new THREE.CircleGeometry(22, 40), new THREE.MeshStandardMaterial({ color: "#d1c29c", roughness: 1 }));
+      plaza.rotation.x = -Math.PI / 2;
+      plaza.position.set(cx, plazaY + 0.045, cz);
+      scene.add(plaza);
+
+      for (const [x, z] of [[cx, cz - 11], [cx, cz + 11], [cx - 11, cz], [cx + 11, cz]]) {
+        const path = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 8, 6), new THREE.MeshStandardMaterial({ color: "#a99c77", roughness: 1 }));
+        path.position.set(x, terrainHeight(x, z) + 0.08, z);
+        path.rotation.x = Math.PI / 2;
+        scene.add(path);
+      }
+
+      const buildings = [];
+      const colors = ["#d9c6a0", "#e7d5b5", "#c5d0ba", "#ead2b1", "#c7d7ce"];
+      const roofColors = ["#8b5947", "#a8664c", "#66574a", "#9d7657"];
+      for (let i = 0; i < 24; i++) {
+        const angle = i * 2.39996 + random() * 0.18;
+        const radius = 22 + Math.sqrt(i + 1) * 7 + random() * 4;
+        const x = cx + Math.cos(angle) * radius;
+        const z = cz + Math.sin(angle) * radius * 0.79;
+        if (Math.abs(x + 24) < 12 && z < -20 && z > -80) continue;
+        const width = 5.4 + random() * 3.6;
+        const depth = 5 + random() * 3.8;
+        const height = 4.6 + random() * 3.4;
+        const building = addBuilding(x, z, width, depth, height, colors[Math.floor(random() * colors.length)], roofColors[Math.floor(random() * roofColors.length)], random, { rotation: angle + Math.PI / 2 });
+        buildings.push(building);
+      }
+
+      const hall = addBuilding(cx + 2, cz - 42, 17, 14, 11, "#d5d2bd", "#697c75", random, { flat: true });
+      landmarks.push({ ...hall, name: "Dorfplatz", region: "Dorf Weidenruh", title: "Ein ruhiger Ort", text: "Zwischen den Hügeln liegt das kleine Dorf Weidenruh." });
+
+      const wellY = terrainHeight(cx - 2, cz);
+      const well = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 1.4, 12), new THREE.MeshStandardMaterial({ color: "#98846b", roughness: 1 }));
+      well.position.set(cx - 2, wellY + 0.7, cz);
+      well.castShadow = true;
+      scene.add(well);
+      const wellWater = new THREE.Mesh(new THREE.CylinderGeometry(1.65, 1.65, 0.12, 16), makeWaterMaterial("#4e9eaa", 1));
+      wellWater.position.set(cx - 2, wellY + 1.44, cz);
+      scene.add(wellWater);
+
+      for (let i = 0; i < 16; i++) {
+        const angle = i * 2.39996;
+        const radius = 38 + random() * 30;
+        const x = cx + Math.cos(angle) * radius;
+        const z = cz + Math.sin(angle) * radius;
+        const sign = Math.sin(angle) > 0 ? 1 : -1;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.65, 0.32), new THREE.MeshStandardMaterial({ color: ["#587b69", "#748d9c", "#ab785f", "#806f99"][i % 4], roughness: 1 }));
+        body.position.set(x, terrainHeight(x, z) + 0.82, z);
+        body.rotation.y = angle + Math.PI / 2;
+        body.castShadow = true;
+        scene.add(body);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 8, 6), new THREE.MeshStandardMaterial({ color: ["#c59a79", "#aa8067", "#dfb596"][i % 3], roughness: 1 }));
+        head.position.set(x, terrainHeight(x, z) + 1.95, z);
+        scene.add(head);
+        const hat = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.52, 0.17, 8), new THREE.MeshStandardMaterial({ color: "#55463d", roughness: 1 }));
+        hat.position.set(x, terrainHeight(x, z) + 2.32, z);
+        scene.add(hat);
+        landmarks.push({ x: x + sign * 2, z, y: terrainHeight(x, z), name: "Weidenruh", region: "Dorf Weidenruh", title: "Ein Dorf in der Ferne", text: "Die Bewohner genießen einen ruhigen Tag im Freien." });
+      }
+      for (const building of buildings) {
+        if (Math.hypot(building.x - START_POSITION.x, building.z - START_POSITION.z) < 38) {
+          landmarks.push({ ...building, name: "Weidenruh", region: "Dorf Weidenruh", title: "Willkommen in Weidenruh", text: "Ein kleines Dorf, versteckt in einer grünen Landschaft." });
+        }
+      }
+    }
+
+    function createBridge(x, z, angle = 0) {
+      const y = SEA_LEVEL + 0.45;
+      const deck = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.55, 18), new THREE.MeshStandardMaterial({ color: "#907556", roughness: 1 }));
+      deck.position.set(x, y, z);
+      deck.rotation.y = angle;
+      deck.castShadow = true;
+      deck.receiveShadow = true;
+      scene.add(deck);
+      for (let i = -1; i <= 1; i += 2) {
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.1, 18), new THREE.MeshStandardMaterial({ color: "#725b45", roughness: 1 }));
+        rail.position.set(x + Math.cos(angle) * i * 3.2, y + 0.75, z - Math.sin(angle) * i * 3.2);
+        rail.rotation.y = angle;
+        scene.add(rail);
+      }
+      for (let i = -1; i <= 1; i += 2) {
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2.1, 0.6), new THREE.MeshStandardMaterial({ color: "#69543f", roughness: 1 }));
+        post.position.set(x + i * 3, y + 0.48, z);
+        post.rotation.y = angle;
+        post.castShadow = true;
+        scene.add(post);
+      }
+      colliders.push({ x, z, radius: 3.4 });
+    }
+
+    function createRoad() {
+      const roadMaterial = new THREE.MeshStandardMaterial({ color: "#c5b893", roughness: 1, side: THREE.DoubleSide });
+      const points = [
+        new THREE.Vector3(-56, 0, 60),
+        new THREE.Vector3(-36, 0, 42),
+        new THREE.Vector3(-19, 0, 23),
+        new THREE.Vector3(7, 0, 9),
+        new THREE.Vector3(37, 0, 4),
+        new THREE.Vector3(66, 0, -6),
+        new THREE.Vector3(90, 0, -28),
+        new THREE.Vector3(114, 0, -56)
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const vertices = [];
+      const indices = [];
+      const samples = 100;
+      for (let i = 0; i <= samples; i++) {
+        const t = i / samples;
+        const point = curve.getPoint(t);
+        const tangent = curve.getTangent(t).normalize();
+        const perpendicular = new THREE.Vector3(-tangent.z, 0, tangent.x);
+        const halfWidth = 2.3 + Math.sin(t * Math.PI) * 0.5;
+        for (const side of [-1, 1]) {
+          const x = point.x + perpendicular.x * halfWidth * side;
+          const z = point.z + perpendicular.z * halfWidth * side;
+          vertices.push(x, terrainHeight(x, z) + 0.12, z);
+        }
+        if (i < samples) {
+          const a = i * 2;
+          indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+        }
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      const road = new THREE.Mesh(geometry, roadMaterial);
+      road.receiveShadow = true;
+      scene.add(road);
+      createBridge(-74, -35, Math.PI / 2);
+      createBridge(-42, -179, Math.PI / 2);
+    }
+
+    function createWaterfall() {
+      const x = -78;
+      const z = -218;
+      const ledgeY = terrainHeight(x, z);
+      const geometry = new THREE.PlaneGeometry(6.5, Math.max(0.5, ledgeY - SEA_LEVEL));
+      const material = new THREE.MeshStandardMaterial({ color: "#8fd6df", transparent: true, opacity: 0.78, roughness: 0.22, side: THREE.DoubleSide });
+      const water = new THREE.Mesh(geometry, material);
+      water.position.set(x, SEA_LEVEL + (ledgeY - SEA_LEVEL) / 2, z);
+      water.rotation.y = -0.22;
+      scene.add(water);
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(8, 24), makeWaterMaterial("#479fb0", 0.88));
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(x + 3, SEA_LEVEL + 0.07, z - 8);
+      scene.add(pool);
+      landmarks.push({ x: x + 7, z: z - 4, name: "Silberfall", region: "Am Silberfall", title: "Der Silberfall", text: "Ein Wasserfall stürzt von den Hügeln in einen stillen Fluss." });
+    }
+
+    function createAnimals() {
+      const random = seededRandom(7782);
+      const sheepMaterial = new THREE.MeshStandardMaterial({ color: "#eee8d8", roughness: 1 });
+      const sheepHeadMaterial = new THREE.MeshStandardMaterial({ color: "#554d43", roughness: 1 });
+      const legMaterial = new THREE.MeshStandardMaterial({ color: "#51473e", roughness: 1 });
+      const sheepGeo = new THREE.SphereGeometry(1, 8, 6);
+      const headGeo = new THREE.SphereGeometry(0.35, 8, 6);
+      const legGeo = new THREE.CylinderGeometry(0.11, 0.13, 0.7, 5);
+      for (let i = 0; i < 27; i++) {
+        const x = -160 + random() * 210;
+        const z = -155 + random() * 280;
+        if (landFactor(x, z) < 0.95 || Math.hypot(x - 65, z + 6) < 55 || Math.abs(x + 76) < 13) continue;
+        const y = terrainHeight(x, z);
+        const group = new THREE.Group();
+        const body = new THREE.Mesh(sheepGeo, sheepMaterial);
+        body.scale.set(0.87, 0.68, 0.59);
+        body.position.y = 1.12;
+        body.castShadow = true;
+        group.add(body);
+        for (const side of [-1, 1]) {
+          for (const front of [-1, 1]) {
+            const leg = new THREE.Mesh(legGeo, legMaterial);
+            leg.position.set(side * 0.48, 0.53, front * 0.28);
+            group.add(leg);
+          }
+        }
+        const head = new THREE.Mesh(headGeo, sheepHeadMaterial);
+        head.position.set(0, 1.33, 0.67);
+        head.castShadow = true;
+        group.add(head);
+        group.position.set(x, y, z);
+        group.rotation.y = random() * Math.PI * 2;
+        scene.add(group);
+      }
+    }
+
+    function createFlowers() {
+      const random = seededRandom(981);
+      const flowerMaterials = [
+        new THREE.MeshStandardMaterial({ color: "#f4d47b", roughness: 0.8 }),
+        new THREE.MeshStandardMaterial({ color: "#e9c2d7", roughness: 0.8 }),
+        new THREE.MeshStandardMaterial({ color: "#eee6bf", roughness: 0.8 })
+      ];
+      const flowerGeometry = new THREE.SphereGeometry(0.16, 5, 4);
+      const stemGeometry = new THREE.CylinderGeometry(0.035, 0.04, 0.45, 4);
+      const flowerInstances = [[], [], []];
+      const stemInstances = [];
+      for (let i = 0; i < 850 && stemInstances.length < 340; i++) {
+        const x = (random() - 0.5) * 230;
+        const z = (random() - 0.5) * 240;
+        if (landFactor(x, z) < 0.99 || heightAt(x, z) > 16 || Math.hypot(x - 65, z + 6) < 39 || Math.abs(x + 76) < 12) continue;
+        const y = terrainHeight(x, z);
+        const colorIndex = Math.floor(random() * flowerMaterials.length);
+        stemInstances.push({ x, y, z });
+        flowerInstances[colorIndex].push({ x, y, z, rotation: random() * Math.PI * 2 });
+      }
+      const dummy = new THREE.Object3D();
+      const stems = new THREE.InstancedMesh(stemGeometry, new THREE.MeshStandardMaterial({ color: "#4b814a", roughness: 1 }), stemInstances.length);
+      stemInstances.forEach((flower, index) => {
+        dummy.position.set(flower.x, flower.y + 0.22, flower.z);
+        dummy.updateMatrix();
+        stems.setMatrixAt(index, dummy.matrix);
+      });
+      stems.instanceMatrix.needsUpdate = true;
+      scene.add(stems);
+      flowerInstances.forEach((flowers, colorIndex) => {
+        if (!flowers.length) return;
+        const instances = new THREE.InstancedMesh(flowerGeometry, flowerMaterials[colorIndex], flowers.length);
+        flowers.forEach((flower, index) => {
+          dummy.position.set(flower.x, flower.y + 0.48, flower.z);
+          dummy.rotation.set(0, flower.rotation, 0);
+          dummy.updateMatrix();
+          instances.setMatrixAt(index, dummy.matrix);
+        });
+        instances.instanceMatrix.needsUpdate = true;
+        scene.add(instances);
+      });
+    }
+
+    function addLandmark(x, z, name, region, title, text, distance = 15) {
+      landmarks.push({ x, z, y: terrainHeight(x, z), name, region, title, text, distance });
+    }
+
+    function createLandmarks() {
+      addLandmark(-10, -175, "Smaragdrand", "Am Waldsee", "Waldsee", "Ein klarer See liegt versteckt zwischen dem alten Wald und sanften Hügeln.", 17);
+      addLandmark(151, 92, "Spiegelwasser", "Am Bergsee", "Bergsee", "Das Wasser spiegelt den Himmel, umgeben von stillen Wiesen.", 17);
+      addLandmark(207, 11, "Ostküste", "Am offenen Meer", "Die offene See", "Hinter der Küste erstreckt sich das weite, blaue Meer.", 18);
+      addLandmark(-199, -20, "Kiefernwald", "Im hohen Norden", "Der alte Kiefernwald", "Hohe Kiefern rauschen im Wind über den grünen Hügeln.", 19);
+      addLandmark(-130, 162, "Blumenwiese", "Südliche Wiesen", "Eine Wiese voller Leben", "Blumen und Gräser wiegen sich im Sonnenlicht.", 18);
+      addLandmark(127, -163, "Hochland", "Die fernen Hügel", "Die weiten Hügel", "Von hier aus kannst du über die Insel bis zur Küste blicken.", 18);
+      addLandmark(65, -6, "Weidenruh", "Dorf Weidenruh", "Das Dorf Weidenruh", "Ein kleiner Dorfplatz, umgeben von warmen Dächern und grünen Wiesen.", 21);
+    }
+
+    function setupLighting() {
+      scene.background = new THREE.Color("#a8d7e8");
+      scene.fog = new THREE.FogExp2("#a8d7e8", 0.00155);
+      const hemisphere = new THREE.HemisphereLight("#def5ff", "#6c624e", 2.15);
+      scene.add(hemisphere);
+      const sun = new THREE.DirectionalLight("#fff0cc", 3.1);
+      sun.position.set(-110, 165, 88);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(2048, 2048);
+      sun.shadow.camera.left = -175;
+      sun.shadow.camera.right = 175;
+      sun.shadow.camera.top = 175;
+      sun.shadow.camera.bottom = -175;
+      sun.shadow.camera.near = 10;
+      sun.shadow.camera.far = 370;
+      sun.shadow.bias = -0.00024;
+      sun.shadow.normalBias = 0.035;
+      scene.add(sun);
+    }
+
+    function createWorld() {
+      scene = new THREE.Scene();
+      setupLighting();
+      createTerrain();
+      createOcean();
+      createRiver();
+      createLake(-10, -175, 27, 21, "#4e9eae");
+      createLake(151, 92, 23, 16, "#4c9eac");
+      createLake(-170, -70, 18, 12, "#529bab");
+      createWaterfall();
+      createRoad();
+      createForest();
+      createVillage();
+      createCity(-370, -100, "Aurora", "Nordkontinent", 6104, 6, 6, 15);
+      createCity(345, 300, "Sonnwacht", "Südkontinent", 4921, 5, 5, 14);
+      createCity(-310, 365, "Kupferhafen", "Westkontinent", 3307, 4, 4, 13);
+      createFerryPort(268, -9, { x: 1, z: 0 }, "Weidenruh", "Hauptkontinent", 258, -9);
+      createFerryPort(-258, -100, { x: 1, z: 0 }, "Aurora", "Nordkontinent", -266, -100);
+      createFerryPort(200, 300, { x: -1, z: 0 }, "Sonnwacht", "Südkontinent", 210, 300);
+      createFerryPort(-195, 365, { x: 1, z: 0 }, "Kupferhafen", "Westkontinent", -203, 365);
+      createAnimals();
+      createFlowers();
+      createLandmarks();
+    }
+
+    function updateLocation() {
+      const p = camera.position;
+      const ferryIndex = ferryPorts.findIndex((port) => Math.hypot(p.x - port.x, p.z - port.z) < 15);
+      const ferryButton = document.getElementById("ferryButton");
+      ferryButton.classList.toggle("show", ferryIndex >= 0);
+      let nearest = null;
+      let nearestDistance = Infinity;
+      for (const point of landmarks) {
+        const distance = Math.hypot(p.x - point.x, p.z - point.z);
+        if (distance < (point.distance ?? 20) && distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = point;
+        }
+      }
+      let name = "Grüne Weite";
+      let region = "Eine lebendige Welt";
+      let title = "Ein neuer Morgen";
+      let text = "Die Welt wartet auf dich.";
+      if (ferryIndex >= 0) {
+        const destination = ferryPorts[(ferryIndex + 1) % ferryPorts.length];
+        name = "Fährhafen";
+        region = `Nach ${destination.name} · E drücken`;
+        title = "Eine Fähre liegt bereit";
+        text = `Setze mit der Fähre nach ${destination.name} über.`;
+      } else if (nearest) {
+        name = nearest.name;
+        region = nearest.region;
+        title = nearest.title;
+        text = nearest.text;
+      } else {
+        const coast = coastAt(p.x, p.z);
+        const height = terrainHeight(p.x, p.z);
+        if (Math.hypot(p.x - 65, p.z + 6) < 70) {
+          name = "Weidenruh";
+          region = "Dorf und Umgebung";
+        } else if (p.z > 130) {
+          name = "Südliche Wiesen";
+          region = "Grüne Weite";
+        } else if (p.z < -145) {
+          name = height > 14 ? "Nördliches Hochland" : "Am Waldsee";
+          region = "Nördliche Hügel";
+        } else if (p.x < -140) {
+          name = "Kiefernwald";
+          region = "Westliche Wälder";
+        } else if (p.x > 145) {
+          name = coast < 35 ? "Ostküste" : "Östliche Weite";
+          region = "Blick aufs offene Meer";
+        } else if (height > 18) {
+          name = "Die fernen Hügel";
+          region = "Hoch über dem Land";
+        } else if (Math.abs(p.x + 76) < 22 && p.z < -100) {
+          name = "Silberfall";
+          region = "Fluss und Wasserfall";
+        }
+      }
+      if (name !== lastLocation) {
+        locationName.textContent = name;
+        locationRegion.textContent = region;
+        statusTitle.textContent = title;
+        statusText.textContent = ` · ${text}`;
+        lastLocation = name;
+      } else {
+        statusTitle.textContent = title;
+        statusText.textContent = ` · ${text}`;
+      }
+    }
+
+    function notify(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2100);
+    }
+
+    function tryMove(position, dx, dz) {
+      const checks = [
+        { x: position.x + dx, z: position.z },
+        { x: position.x, z: position.z + dz },
+        { x: position.x + dx, z: position.z + dz }
+      ];
+      let moved = false;
+      for (const check of checks) {
+        if (Math.abs(check.x) > WORLD_SIZE * 0.49 || Math.abs(check.z) > WORLD_SIZE * 0.49) continue;
+        if (coastAt(check.x, check.z) < 2.4) continue;
+        const ground = terrainHeight(check.x, check.z);
+        if (ground > 44) continue;
+        if (Math.abs(ground - position.y) > 1.55 && position.y > SEA_LEVEL + 1) continue;
+        let blocked = false;
+        for (const obstacle of colliders) {
+          if (Math.hypot(check.x - obstacle.x, check.z - obstacle.z) < obstacle.radius + PLAYER_RADIUS) {
+            blocked = true;
+            break;
+          }
+        }
+        if (!blocked) {
+          position.x = check.x;
+          position.z = check.z;
+          moved = true;
+        }
+      }
+      return moved;
+    }
+
+    function pointerLockAvailable() {
+      return !("ontouchstart" in window) && document.pointerLockElement !== undefined;
+    }
+
+    function requestLook() {
+      if (pointerLockAvailable() && renderer?.domElement.requestPointerLock) {
+        renderer.domElement.requestPointerLock();
+      } else {
+        mobileLook = !mobileLook;
+        lookButton.textContent = mobileLook ? "Blick-Modus beenden" : "Umschauen aktivieren";
+        notify(mobileLook ? "Blick-Modus an – bewege die Maus, um dich umzuschauen." : "Blick-Modus aus.");
+      }
+    }
+
+    function setupControls() {
+      document.addEventListener("keydown", (event) => {
+        const key = event.key.toLowerCase();
+        if (["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
+        if (key === "e" && !event.repeat && startScreen.classList.contains("hidden")) travelByFerry();
+        keys.add(key);
+      });
+      document.addEventListener("keyup", (event) => keys.delete(event.key.toLowerCase()));
+      window.addEventListener("blur", () => keys.clear());
+      document.querySelectorAll(".dpad [data-key]").forEach((button) => {
+        const key = button.dataset.key;
+        const release = () => keys.delete(key);
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          keys.add(key);
+          button.setPointerCapture(event.pointerId);
+        });
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+      });
+      document.addEventListener("mousemove", (event) => {
+        if (!isPointerLocked && !mobileLook) return;
+        yaw -= event.movementX * 0.0022;
+        pitch -= event.movementY * 0.0018;
+        pitch = THREE.MathUtils.clamp(pitch, -1.08, 0.72);
+      });
+      document.addEventListener("pointerlockchange", () => {
+        isPointerLocked = document.pointerLockElement === renderer.domElement;
+      });
+      renderer.domElement.addEventListener("click", () => {
+        if (!startScreen.classList.contains("hidden")) return;
+        if (pointerLockAvailable() && !isPointerLocked) requestLook();
+      });
+      lookButton.addEventListener("click", requestLook);
+      document.getElementById("ferryButton").addEventListener("click", travelByFerry);
+      window.addEventListener("contextmenu", (event) => event.preventDefault());
+      window.addEventListener("resize", resize);
+      window.addEventListener("touchstart", (event) => {
+        if (!mobileLook || event.target.closest("button")) return;
+        const touch = event.changedTouches[0];
+        renderer.domElement.dataset.touchX = String(touch.clientX);
+        renderer.domElement.dataset.touchY = String(touch.clientY);
+      }, { passive: true });
+      window.addEventListener("touchmove", (event) => {
+        if (!mobileLook || event.target.closest("button")) return;
+        const touch = event.changedTouches[0];
+        const previousX = Number(renderer.domElement.dataset.touchX || touch.clientX);
+        const previousY = Number(renderer.domElement.dataset.touchY || touch.clientY);
+        yaw -= (touch.clientX - previousX) * 0.006;
+        pitch -= (touch.clientY - previousY) * 0.005;
+        pitch = THREE.MathUtils.clamp(pitch, -1.08, 0.72);
+        renderer.domElement.dataset.touchX = String(touch.clientX);
+        renderer.domElement.dataset.touchY = String(touch.clientY);
+      }, { passive: true });
+      window.addEventListener("touchend", () => {
+        delete renderer.domElement.dataset.touchX;
+        delete renderer.domElement.dataset.touchY;
+      }, { passive: true });
+    }
+
+    function updatePlayer(delta) {
+      forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
+      right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+      move.set(0, 0, 0);
+      if (keys.has("w") || keys.has("arrowup")) move.add(forward);
+      if (keys.has("s") || keys.has("arrowdown")) move.sub(forward);
+      if (keys.has("d") || keys.has("arrowright")) move.add(right);
+      if (keys.has("a") || keys.has("arrowleft")) move.sub(right);
+
+      const moving = move.lengthSq() > 0;
+      if (moving) {
+        move.normalize();
+        const running = keys.has("shift");
+        const speed = running ? 12.5 : 7.6;
+        const dx = move.x * speed * delta;
+        const dz = move.z * speed * delta;
+        const moved = tryMove(camera.position, dx, dz);
+        if (moved) walkingTime += delta * (running ? 13 : 9);
+      } else {
+        walkingTime += delta * 0.6;
+      }
+
+      const ground = terrainHeight(camera.position.x, camera.position.z);
+      const bob = moving ? Math.sin(walkingTime) * 0.055 : Math.sin(walkingTime) * 0.012;
+      const targetY = Math.max(ground + PLAYER_HEIGHT + bob, SEA_LEVEL + PLAYER_HEIGHT);
+      camera.position.y += (targetY - camera.position.y) * Math.min(1, delta * 9);
+      camera.rotation.order = "YXZ";
+      camera.rotation.y = yaw;
+      camera.rotation.x = pitch;
+      camera.rotation.z = moving ? Math.sin(walkingTime * 0.5) * 0.003 : 0;
+      camera.getWorldDirection(cameraDirection);
+    }
+
+    function animate() {
+      if (!initialized) return;
+      requestAnimationFrame(animate);
+      const delta = Math.min(clock.getDelta(), 0.04);
+      updatePlayer(delta);
+      updateLocation();
+      const time = performance.now() * 0.0002;
+      for (let i = 0; i < waterSurfaces.length; i++) {
+        const water = waterSurfaces[i];
+        if (water.name === "open ocean" || water.name === "Willow river" || water.name === "quiet lake") {
+          water.material.color.setHSL(0.53 + Math.sin(time + i) * 0.008, 0.36, 0.44 + Math.sin(time * 2 + i * 3) * 0.025);
+        }
+      }
+      renderer.render(scene, camera);
+    }
+
+    function resize() {
+      if (!renderer || !camera) return;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
+    }
+
+    async function init() {
+      try {
+        THREE = await import("three");
+      } catch (error) {
+        console.error("Die 3D-Bibliothek konnte nicht geladen werden.", error);
+        showError("Three.js konnte nicht aus dem Internet geladen werden. Prüfe deine Internetverbindung und lade die Seite erneut.");
+        return;
+      }
+
+      try {
+        clock = new THREE.Clock();
+        cameraDirection = new THREE.Vector3();
+        forward = new THREE.Vector3();
+        right = new THREE.Vector3();
+        move = new THREE.Vector3();
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.65));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.12;
+        renderer.domElement.setAttribute("aria-label", "Begehbare 3D-Landschaft");
+        document.body.prepend(renderer.domElement);
+        camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 1200);
+        camera.position.set(START_POSITION.x, terrainHeight(START_POSITION.x, START_POSITION.z) + PLAYER_HEIGHT, START_POSITION.z);
+        setupControls();
+        createWorld();
+        updateLocation();
+        initialized = true;
+        loadingScreen.classList.add("hidden");
+        clock.start();
+        animate();
+      } catch (error) {
+        console.error("Die 3D-Welt konnte nicht gestartet werden.", error);
+        const detail = error instanceof Error ? ` (${error.message})` : "";
+        showError(`Die 3D-Welt konnte nicht gestartet werden. Prüfe, ob dein Browser WebGL unterstützt, und lade die Seite erneut.${detail}`);
+      }
+    }
+
+    startButton.addEventListener("click", () => {
+      if (!initialized) {
+        notify("Die Welt wird noch geladen. Einen Moment bitte.");
+        return;
+      }
+      startScreen.classList.add("hidden");
+      if (pointerLockAvailable()) requestLook();
+      else notify("Nutze die Tasten zum Gehen und schalte den Blick-Modus zum Umschauen ein.");
+    });
+
+    init().catch((error) => {
+      console.error("Die 3D-Welt konnte nicht initialisiert werden.", error);
+      showError("Beim Start der Welt ist ein Fehler aufgetreten. Lade die Seite erneut.");
+    });
+  </script>
+</body>
+</html>
