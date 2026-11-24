@@ -179,12 +179,28 @@
     </div>
   </section>
 
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js"
+  <script>
+    window.addEventListener("error", (event) => {
+      const errorScreen = document.getElementById("errorScreen");
+      if (!errorScreen || !errorScreen.classList.contains("hidden")) return;
+      document.getElementById("errorText").textContent =
+        "Ein JavaScript-Fehler hat den Start verhindert. Lade die Seite neu; falls der Fehler bleibt, prüfe die Browser-Konsole (F12).";
+      document.getElementById("startScreen").classList.add("hidden");
+      errorScreen.classList.remove("hidden");
+      document.getElementById("loadingScreen").classList.add("hidden");
+      console.error("Unerwarteter Fehler beim Laden der Welt.", event.error || event.message);
+    });
+    window.setTimeout(() => {
+      if (document.body.dataset.worldReady === "true") return;
+      const errorScreen = document.getElementById("errorScreen");
+      if (errorScreen && errorScreen.classList.contains("hidden")) {
+        document.getElementById("errorText").textContent =
+          "Die 3D-Welt braucht ungewöhnlich lange zum Laden. Prüfe, ob dein Netzwerk den Zugriff auf jsDelivr oder unpkg blockiert, und lade die Seite erneut.";
+        document.getElementById("startScreen").classList.add("hidden");
+        errorScreen.classList.remove("hidden");
+        document.getElementById("loadingScreen").classList.add("hidden");
       }
-    }
+    }, 45000);
   </script>
   <script type="module">
     const loadingScreen = document.getElementById("loadingScreen");
@@ -1207,11 +1223,23 @@
     }
 
     async function init() {
-      try {
-        THREE = await import("three");
-      } catch (error) {
-        console.error("Die 3D-Bibliothek konnte nicht geladen werden.", error);
-        showError("Three.js konnte nicht aus dem Internet geladen werden. Prüfe deine Internetverbindung und lade die Seite erneut.");
+      const moduleUrls = [
+        "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+        "https://unpkg.com/three@0.164.1/build/three.module.js"
+      ];
+      let importError;
+      for (const url of moduleUrls) {
+        try {
+          THREE = await import(url);
+          break;
+        } catch (error) {
+          importError = error;
+          console.warn(`Three.js konnte nicht von ${url} geladen werden.`, error);
+        }
+      }
+      if (!THREE) {
+        console.error("Three.js konnte von keinem CDN geladen werden.", importError);
+        showError("Die 3D-Bibliothek konnte nicht geladen werden. Prüfe deine Internetverbindung oder ob dein Netzwerk jsDelivr und unpkg blockiert, und lade die Seite erneut.");
         return;
       }
 
@@ -1237,6 +1265,7 @@
         createWorld();
         updateLocation();
         initialized = true;
+        document.body.dataset.worldReady = "true";
         loadingScreen.classList.add("hidden");
         clock.start();
         animate();
@@ -1249,7 +1278,8 @@
 
     startButton.addEventListener("click", () => {
       if (!initialized) {
-        notify("Die Welt wird noch geladen. Einen Moment bitte.");
+        startButton.textContent = "Welt wird geladen …";
+        notify("Die Welt wird geladen. Wenn nach 45 Sekunden eine Fehlermeldung erscheint, wird das 3D-Modul blockiert.");
         return;
       }
       startScreen.classList.add("hidden");
