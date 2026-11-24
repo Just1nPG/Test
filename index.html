@@ -522,8 +522,9 @@
           scene.add(crown);
         }
       }
+    }
 
-      function createCity(cx, cz, name, region, seed, rows, columns, spacing) {
+    function createCity(cx, cz, name, region, seed, rows, columns, spacing) {
         const random = seededRandom(seed);
         const plazaY = terrainHeight(cx, cz);
         const plaza = new THREE.Mesh(
@@ -595,7 +596,7 @@
         });
       }
 
-      function createFerryPort(x, z, direction, name, region, arrivalX, arrivalZ) {
+    function createFerryPort(x, z, direction, name, region, arrivalX, arrivalZ) {
         const pierLength = 17;
         const angle = Math.atan2(direction.x, direction.z);
         for (let i = 0; i < 5; i++) {
@@ -633,7 +634,7 @@
         landmarks.push({ x, z, y: SEA_LEVEL, name, region, title: "Ein kleiner Fährhafen", text: "Drücke E, um mit der Fähre zu einer anderen Küste zu fahren.", distance: 19 });
       }
 
-      function travelByFerry() {
+    function travelByFerry() {
         let nearestIndex = -1;
         let nearestDistance = Infinity;
         ferryPorts.forEach((port, index) => {
@@ -656,7 +657,6 @@
         yaw = Math.atan2(destination.x - destination.arrivalX, destination.z - destination.arrivalZ);
         notify(`Die Fähre bringt dich nach ${destination.name}.`);
         updateLocation();
-      }
     }
 
     function addBuilding(cx, cz, width, depth, height, wallColor, roofColor, random, options = {}) {
